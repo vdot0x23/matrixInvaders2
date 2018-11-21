@@ -35,14 +35,24 @@ byte board[] = {
   player ^ maxByte,
 };
 
-int rainRate = 500;
+byte lastRandom = B00010000;
+
+void genDrops() {
+  board[0] = rainDrops[random(0, 8)];
+  if ((lastRandom >> 1) == board[0] || (lastRandom << 1) == board[0] || lastRandom == board[0]) {
+    genDrops();
+  }
+  lastRandom = board[0];
+}
+
+float rainRate = 250;
 unsigned long long rainRateTimer = 0;
 
 void rain() {
   if (rainRate < millis() - rainRateTimer) {
     if (board[0] == 0) {
-      board[0] = rainDrops[random(0, 8)];
       rainRateTimer = millis();
+      genDrops();
     }
     else {
       for (int i = 5; i >= 0; i--) {
@@ -65,6 +75,16 @@ void check() {
   }
 }
 
+int difficultyRate = 100;
+unsigned long long difficultyRateTimer = 0;
+
+void difficulty() {
+  if (difficultyRate < millis() - difficultyRateTimer) {
+    difficultyRateTimer = millis();
+    rainRate *= 0.999;
+  }
+}
+
 /////////////////////////
 //   INPUT HANDLING   //
 ///////////////////////
@@ -77,30 +97,26 @@ unsigned long long inputRateTimer = 0;
 
 void shiftL() {
   if (player < 65 && inputRate < millis() - inputRateTimer) {
+    inputRateTimer = millis();
     player = player << 1;
     board[7] = player ^ maxByte;
-    inputRateTimer = millis();
-    Serial.println("lbut");
   }
 }
 
 void shiftR() {
   if (player > 1 && inputRate < millis() - inputRateTimer) {
+    inputRateTimer = millis();
     player = player >> 1;
     board[7] = player ^ maxByte;
-    inputRateTimer = millis();
-    Serial.println("rbut");
   }
 }
 
 void inputCheck() {
   if (digitalRead(lButPin) == LOW) {
     shiftL();
-    draw();
   }
   else if (digitalRead(rButPin) == LOW) {
     shiftR();
-    draw();
   }
 }
 
@@ -129,4 +145,5 @@ void loop() {
   inputCheck();
   draw();
   check();
+  difficulty();
 }

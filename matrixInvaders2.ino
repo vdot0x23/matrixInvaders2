@@ -11,6 +11,7 @@ LedControl lc = LedControl(dinPin, clkPin, csPin, ledPanels);
 //   GAME BOARD   //
 ///////////////////
 
+//Generer 1 og bitshift randomly
 byte rainDrops[] = {
   B00000001,
   B00000010,
@@ -34,19 +35,21 @@ byte board[] = {
   player ^ maxByte,
 };
 
+int rainRate = 500;
+unsigned long long rainRateTimer = 0;
 
 void rain() {
-  if (board[0] == 0) {
-    board[0] = rainDrops[random(0, 8)];
-    return;
-  }
-  else {
-    for (int i = 5; i >= 0; i--) {
-      board[i + 1] = board[i];
-      delay(22);
-      board[i] = B00000000;
+  if (rainRate < millis() - rainRateTimer) {
+    if (board[0] == 0) {
+      board[0] = rainDrops[random(0, 8)];
+      rainRateTimer = millis();
     }
-    return;
+    else {
+      for (int i = 5; i >= 0; i--) {
+        board[i + 1] = board[i];
+        board[i] = B00000000;
+      }
+    }
   }
 }
 
@@ -59,10 +62,6 @@ void draw() {
 void check() {
   if ((board[7] | board[6]) == 255) {
     //Serial.println("you loose");
-    return;
-  }
-  else {
-    return;
   }
 }
 
@@ -70,42 +69,40 @@ void check() {
 //   INPUT HANDLING   //
 ///////////////////////
 
-/*
- 
-
-volatile unsigned long lastDebounce = 0;
-
-int debounce() {
-  int debounceCutoff = 111;
-  if ((long)millis() - lastDebounce >= debounceCutoff) {
-    lastDebounce = millis();
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
-
 int lButPin = 2;
 int rButPin = 3;
 
-void lShift() {
-  if (player < 128 && debounce() == 1) {
+int inputRate = 125;
+unsigned long long inputRateTimer = 0;
+
+void shiftL() {
+  if (player < 65 && inputRate < millis() - inputRateTimer) {
     player = player << 1;
     board[7] = player ^ maxByte;
-    draw();
+    inputRateTimer = millis();
+    Serial.println("lbut");
   }
 }
 
-void rShift() {
-  if (player > 1 && debounce() == 1) {
+void shiftR() {
+  if (player > 1 && inputRate < millis() - inputRateTimer) {
     player = player >> 1;
     board[7] = player ^ maxByte;
-    draw();
+    inputRateTimer = millis();
+    Serial.println("rbut");
   }
 }
 
- */
+void inputCheck() {
+  if (digitalRead(lButPin) == LOW) {
+    shiftL();
+    draw();
+  }
+  else if (digitalRead(rButPin) == LOW) {
+    shiftR();
+    draw();
+  }
+}
 
 //CODE IN setup() GETS RUN ONCE
 void setup() {
@@ -114,16 +111,9 @@ void setup() {
 
   randomSeed(analogRead(A0));
 
-  //Input interrupts
-
-/*
-  
+  //Input
   pinMode(lButPin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(lButPin), lShift, FALLING);
   pinMode(rButPin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(rButPin), rShift, FALLING);
-
-*/
 
   //Turn on all attached displays
   for (int i = 0; i < lc.getDeviceCount(); i++) {
@@ -135,10 +125,8 @@ void setup() {
 
 //CODE IN loop() GETS RUN REPEATEDLY
 void loop() {
-  interrupts();
   rain();
+  inputCheck();
   draw();
-  //noInterrupts();
   check();
-
 }
